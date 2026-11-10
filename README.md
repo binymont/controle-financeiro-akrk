@@ -4,7 +4,24 @@ Projeto fictício de controle financeiro para o Grupo AKRK. Cada conta gerencia 
 
 O backend NestJS tem seis arquivos em `src`. O React está em `frontend/src`. A pasta `prisma` reúne o modelo, a migration e os dados de demonstração. A compilação recria `dist` e gera o cliente do Prisma em `src/generated`. O Git ignora essas pastas.
 
-## Como rodar
+## Como rodar com Docker
+
+Abra o Docker Desktop e rode na raiz do projeto pelo PowerShell.
+
+```powershell
+if (-not (Test-Path .env.docker)) {
+  $configuracao = docker run --rm node:24-bookworm-slim node -e "const { randomBytes } = require('node:crypto'); for (const chave of ['POSTGRES_PASSWORD', 'JWT_SECRET']) console.log(chave + '=' + randomBytes(32).toString('hex'))"
+  if ($LASTEXITCODE -ne 0) { throw "Não foi possível gerar o arquivo .env.docker." }
+  $configuracao | Set-Content -Encoding ascii .env.docker
+}
+docker compose --env-file .env.docker up --build -d
+```
+
+Abra [a interface no Docker](http://localhost:8080) e use a conta de demonstração descrita abaixo. A API aplica as migrações e cria essa conta na primeira execução. O Docker usa as chaves do `.env.docker` e guarda seus dados em um volume PostgreSQL próprio.
+
+Para acompanhar a inicialização, rode `docker compose --env-file .env.docker logs -f api`. Para parar os serviços e manter os dados, rode `docker compose --env-file .env.docker down`.
+
+## Como rodar sem Docker
 
 **Pré-requisitos** — Node.js 24 com npm e um servidor PostgreSQL em execução. Os comandos abaixo usam PowerShell.
 

@@ -1,0 +1,47 @@
+services:
+  banco:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: controle_financeiro
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env.docker}
+    volumes:
+      - dados_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "controle_financeiro"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  api:
+    build:
+      context: .
+      target: api
+    init: true
+    environment:
+      DATABASE_URL: "postgresql://postgres:${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env.docker}@banco:5432/controle_financeiro?schema=public"
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET no .env.docker}
+      PORT: "3000"
+      FRONTEND_URL: http://localhost:8080
+    depends_on:
+      banco:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/categories').then(r => process.exit(r.status === 401 ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+
+  interface:
+    build:
+      context: .
+      target: interface
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+        restart: true
+
+volumes:
+  dados_postgres:
