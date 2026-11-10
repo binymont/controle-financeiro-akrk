@@ -1,0 +1,43 @@
+name: Validação do projeto
+
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    name: Validar a API, o banco e a interface
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: validacao
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:validacao@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Instalar a API
+        run: npm ci
+      - name: Aplicar as migrações
+        run: npm run db:deploy
+      - name: Testar a API
+        run: npm test
+      - name: Compilar a interface
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
